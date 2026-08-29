@@ -22,6 +22,7 @@ import {
 import React, { useState } from 'react';
 import { Link } from 'expo-router';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
+// @ts-ignore
 import heroImg from '../../assets/images/hero.png';
 import { useCartStore } from '../store/cart-store';
 import { supabase } from '../lib/supabase';
