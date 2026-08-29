@@ -1,7 +1,18 @@
+/**
+ * Drop this file at: gadget-shop-admin-panel/src/app/admin/products/page-component.tsx
+ * (replaces the existing version)
+ *
+ * Changes:
+ * - Table columns updated to match the redesigned ProductTableRow
+ *   (Product, Category, Price, Stock, Actions)
+ * - Added a search input that filters the table by title client-side
+ * - Table now sits inside a Card for visual consistency with the
+ *   dashboard, and shows a result count
+ */
 "use client";
 
-import { FC, useState } from "react";
-import { PlusIcon } from "lucide-react";
+import { FC, useMemo, useState } from "react";
+import { PlusIcon, Search } from "lucide-react";
 import { v4 as uuid } from "uuid";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,6 +21,8 @@ import { toast } from "sonner";
 
 import { ProductsWithCategoriesResponse } from "@/app/admin/products/products.types";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -51,6 +64,7 @@ export const ProductPageComponent: FC<Props> = ({
     useState<CreateOrUpdateProductSchema | null>(null);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [search, setSearch] = useState("");
 
   const form = useForm<CreateOrUpdateProductSchema>({
     resolver: zodResolver(createOrUpdateProductSchema),
@@ -66,6 +80,13 @@ export const ProductPageComponent: FC<Props> = ({
   });
 
   const router = useRouter();
+
+  const filteredProducts = useMemo(() => {
+    if (!search.trim()) return productsWithCategories;
+    return productsWithCategories.filter((product) =>
+      product.title.toLowerCase().includes(search.trim().toLowerCase())
+    );
+  }, [productsWithCategories, search]);
 
   const productCreateUpdateHandler = async (
     data: CreateOrUpdateProductSchema
@@ -149,7 +170,7 @@ export const ProductPageComponent: FC<Props> = ({
           form.reset();
           router.refresh();
           setIsProductModalOpen(false);
-          toast.success("Product created successfully");
+          toast.success("Product updated successfully");
         }
         break;
       }
@@ -172,7 +193,7 @@ export const ProductPageComponent: FC<Props> = ({
   return (
     <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
       <div className="container mx-auto p-4">
-        <div className="flex justify-between items-center mb-4">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-bold">Products Management</h1>
           <Button
             onClick={() => {
@@ -184,30 +205,46 @@ export const ProductPageComponent: FC<Props> = ({
           </Button>
         </div>
 
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Title</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Price</TableHead>
-              <TableHead>Max Quantity</TableHead>
-              <TableHead>Hero Image</TableHead>
-              <TableHead>Product Images</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {productsWithCategories.map((product) => (
-              <ProductTableRow
-                setIsProductModalOpen={setIsProductModalOpen}
-                key={product.id}
-                product={product}
-                setCurrentProduct={setCurrentProduct}
-                setIsDeleteModalOpen={setIsDeleteModalOpen}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-4">
+            <CardTitle>
+              {filteredProducts.length} product{filteredProducts.length !== 1 ? "s" : ""}
+            </CardTitle>
+            <div className="relative w-full max-w-xs">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search products..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-8"
               />
-            ))}
-          </TableBody>
-        </Table>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Product</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Price</TableHead>
+                  <TableHead>Stock</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredProducts.map((product) => (
+                  <ProductTableRow
+                    setIsProductModalOpen={setIsProductModalOpen}
+                    key={product.id}
+                    product={product}
+                    setCurrentProduct={setCurrentProduct}
+                    setIsDeleteModalOpen={setIsDeleteModalOpen}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
 
         {/* Product Modal */}
         <ProductForm
@@ -225,8 +262,11 @@ export const ProductPageComponent: FC<Props> = ({
             <DialogHeader>
               <DialogTitle>Delete Product</DialogTitle>
             </DialogHeader>
-            <p>Are you sure you want to delete {currentProduct?.title}</p>
+            <p>Are you sure you want to delete {currentProduct?.title}?</p>
             <DialogFooter>
+              <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>
+                Cancel
+              </Button>
               <Button variant="destructive" onClick={deleteProductHandler}>
                 Delete
               </Button>
