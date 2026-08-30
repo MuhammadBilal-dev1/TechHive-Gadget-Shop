@@ -1,10 +1,19 @@
+/**
+ * Drop this file at: gadget-shop-admin-panel/src/components/category.tsx
+ * (replaces the existing version)
+ *
+ * Changes:
+ * - Created date shown as a spec-strip instead of plain text
+ * - Product count shown as a badge next to the linked-products dialog
+ * - Larger, consistently-rounded thumbnail matching the products table
+ */
 import Image from "next/image";
-import Link from "next/link";
 import { format } from "date-fns";
 import { useState } from "react";
 import { MoreHorizontal } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -39,6 +48,7 @@ export const CategoryTableRow = ({
   deleteCategoryHandler: (id: number) => Promise<void>;
 }) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const productCount = category.products?.length ?? 0;
 
   const handleEditClick = (category: CreateCategorySchema) => {
     setCurrentCategory({
@@ -61,46 +71,43 @@ export const CategoryTableRow = ({
       <TableRow>
         <TableCell className="sm:table-cell">
           <Image
-            alt="Product image"
-            className="aspect-square rounded-md object-cover"
-            height="64"
+            alt={category.name}
+            className="aspect-square rounded-md border object-cover"
+            height="56"
             src={category.imageUrl}
-            width="64"
+            width="56"
           />
         </TableCell>
         <TableCell className="font-medium">{category.name}</TableCell>
         <TableCell className="md:table-cell">
-          {format(new Date(category.created_at), "yyyy-MM-dd")}
+          <span className="spec-strip">
+            {format(new Date(category.created_at), "yyyy-MM-dd")}
+          </span>
         </TableCell>
         <TableCell className="md:table-cell">
-          {category.products && category.products.length > 0 ? (
+          {productCount > 0 ? (
             <Dialog>
-              <DialogTrigger>
-                {category.products
-                  .slice(0, 2)
-                  .map((product) => product.title)
-                  .join(", ")}
+              <DialogTrigger asChild>
+                <Badge variant="outline" className="cursor-pointer">
+                  {productCount} product{productCount > 1 ? "s" : ""}
+                </Badge>
               </DialogTrigger>
               <DialogContent>
-                <DialogTitle className="sr-only">
-                  Category product list
-                </DialogTitle>
+                <DialogTitle className="sr-only">Category product list</DialogTitle>
                 <h2>Products</h2>
-                <ScrollArea className=" h-[400px] rounded-md p-4 ">
+                <ScrollArea className="h-[400px] rounded-md p-4">
                   {category.products.map((product) => (
-                    <Card key={product.id} className="cursor-pointer mb-4">
-                      <div className="flex pl-5 grid-cols-[100px,1fr] items-center gap-4">
+                    <Card key={product.id} className="mb-4 cursor-pointer">
+                      <div className="grid-cols-[100px,1fr] flex items-center gap-4 pl-5">
                         <Image
-                          alt="Product image"
+                          alt={product.title}
                           className="aspect-square rounded-md object-cover"
                           height="100"
                           src={product.heroImage}
                           width="100"
                         />
                         <div className="flex flex-col space-y-1">
-                          <h3 className="font-medium leading-none">
-                            {product.title}
-                          </h3>
+                          <h3 className="font-medium leading-none">{product.title}</h3>
                           <p className="text-sm text-muted-foreground">
                             {product.maxQuantity} in stock
                           </p>
@@ -112,7 +119,7 @@ export const CategoryTableRow = ({
               </DialogContent>
             </Dialog>
           ) : (
-            "No products linked to this category"
+            <span className="text-sm text-muted-foreground">No products linked</span>
           )}
         </TableCell>
         <TableCell>
@@ -135,7 +142,10 @@ export const CategoryTableRow = ({
               >
                 Edit
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)}>
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={() => setIsDeleteDialogOpen(true)}
+              >
                 Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -143,23 +153,22 @@ export const CategoryTableRow = ({
         </TableCell>
       </TableRow>
 
-      <Dialog
-        open={isDeleteDialogOpen}
-        onOpenChange={() => setIsDeleteDialogOpen(!isDeleteDialogOpen)}
-      >
+      <Dialog open={isDeleteDialogOpen} onOpenChange={() => setIsDeleteDialogOpen(!isDeleteDialogOpen)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Are you absolutely sure?</DialogTitle>
             <DialogDescription>
-              This action cannot be undone. This will permanently delete this
-              category.
+              This action cannot be undone. This will permanently delete this category.
+              {productCount > 0 && (
+                <span className="mt-2 block font-medium text-destructive">
+                  {productCount} product{productCount > 1 ? "s are" : " is"} still linked to
+                  this category.
+                </span>
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-4">
-            <Button
-              variant="outline"
-              onClick={() => setIsDeleteDialogOpen(false)}
-            >
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
               Cancel
             </Button>
             <Button variant="destructive" onClick={handleDelete}>

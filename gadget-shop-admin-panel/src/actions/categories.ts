@@ -58,7 +58,7 @@ export const imageUploadHandler = async (formData: FormData) => {
 };
 
 export const createCategory = async ({
-  imageUrl,
+  image: imageUrl,
   name,
 }: CreateCategorySchemaServer) => {
   const slug = slugify(name, { lower: true });
