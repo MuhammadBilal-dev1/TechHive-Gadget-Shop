@@ -39,11 +39,16 @@ const NAV_LINKS = [
   { href: "/admin/categories", label: "Categories" },
 ];
 
-export const Header = () => {
+export const Header = ({ role }: { role?: string }) => {
   const pathname = usePathname();
   const { setTheme } = useTheme();
   const router = useRouter();
   const supabase = createClient();
+
+  const navLinks =
+    role === "super_admin"
+      ? [...NAV_LINKS, { href: "/admin/team", label: "Team" }]
+      : NAV_LINKS;
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -61,7 +66,7 @@ export const Header = () => {
             TechHive Admin
           </span>
         </Link>
-        {NAV_LINKS.map(({ href, label }) => (
+        {navLinks.map(({ href, label }) => (
           <Link
             key={href}
             href={href}
@@ -95,7 +100,7 @@ export const Header = () => {
               </span>
               TechHive Admin
             </Link>
-            {NAV_LINKS.map(({ href, label }) => (
+            {navLinks.map(({ href, label }) => (
               <Link
                 key={href}
                 href={href}
