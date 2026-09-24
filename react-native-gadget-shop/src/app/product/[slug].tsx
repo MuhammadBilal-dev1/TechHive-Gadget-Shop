@@ -24,8 +24,17 @@ import { Redirect, Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useToast } from "react-native-toast-notifications";
 import { useCartStore } from "../../store/cart-store";
+import {
+  colors,
+  radii,
+  spacing,
+  typography,
+  getStockStatus,
+  statusDot,
+} from "../../theme/tokens";
+import { ReviewsSection } from "../../components/reviews-section";
 import { getProduct } from "../../api/api";
-import { colors, radii, spacing, typography, getStockStatus, statusDot } from "../../theme/tokens";
+import { getWishlist, useToggleWishlist } from "../../api/wishlist";
 
 const ProductDetails = () => {
   const { slug } = useLocalSearchParams<{ slug: string }>();
@@ -34,6 +43,9 @@ const ProductDetails = () => {
 
   const { data: product, error, isLoading } = getProduct(slug);
   const { items, addItem, incrementItem, decrementItem } = useCartStore();
+  const { data: wishlist } = getWishlist();
+  const { mutate: toggleWishlist, isPending: isTogglingWishlist } =
+    useToggleWishlist();
 
   const [activeImage, setActiveImage] = useState(0);
   const [quantity, setQuantity] = useState(0);
@@ -49,13 +61,16 @@ const ProductDetails = () => {
     }
   }, [product, items, hasSyncedQuantity]);
 
-  if (isLoading) return <ActivityIndicator style={{ flex: 1 }} color={colors.signalAmber} />;
-  if (error) return <Text style={styles.errorText}>Error: {error.message}</Text>;
+  if (isLoading)
+    return <ActivityIndicator style={{ flex: 1 }} color={colors.signalAmber} />;
+  if (error)
+    return <Text style={styles.errorText}>Error: {error.message}</Text>;
   if (!product) return <Redirect href={"/404"} />;
 
   const stockStatus = getStockStatus(product.maxQuantity);
   const sku = `GS-${String(product.id).padStart(4, "0")}`;
   const gallery = [product.heroImage, ...(product.imageUrl ?? [])];
+  const isWishlisted = wishlist?.has(product.id) ?? false;
 
   const increaseQuantity = () => {
     if (quantity < product.maxQuantity) {
@@ -86,7 +101,11 @@ const ProductDetails = () => {
       quantity,
       maxQuantity: product.maxQuantity,
     });
-    toast.show("Added to cart", { type: "success", placement: "top", duration: 1500 });
+    toast.show("Added to cart", {
+      type: "success",
+      placement: "top",
+      duration: 1500,
+    });
   };
 
   const totalPrice = (product.price * quantity).toFixed(2);
@@ -97,9 +116,28 @@ const ProductDetails = () => {
 
       <ScrollView contentContainerStyle={{ paddingBottom: 140 }}>
         <View style={styles.heroWrap}>
-          <Image source={{ uri: gallery[activeImage] }} style={styles.heroImage} />
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Image
+            source={{ uri: gallery[activeImage] }}
+            style={styles.heroImage}
+          />
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
             <Ionicons name="arrow-back" size={20} color={colors.ink} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.wishlistButton}
+            disabled={isTogglingWishlist}
+            onPress={() =>
+              toggleWishlist({ productId: product.id, isWishlisted })
+            }
+          >
+            <Ionicons
+              name={isWishlisted ? "heart" : "heart-outline"}
+              size={20}
+              color={isWishlisted ? colors.danger : colors.ink}
+            />
           </TouchableOpacity>
           {stockStatus === "outOfStock" && (
             <View style={styles.outOfStockBadge}>
@@ -115,10 +153,16 @@ const ProductDetails = () => {
             contentContainerStyle={styles.thumbRow}
           >
             {gallery.map((uri, index) => (
-              <TouchableOpacity key={index} onPress={() => setActiveImage(index)}>
+              <TouchableOpacity
+                key={index}
+                onPress={() => setActiveImage(index)}
+              >
                 <Image
                   source={{ uri }}
-                  style={[styles.thumb, activeImage === index && styles.thumbActive]}
+                  style={[
+                    styles.thumb,
+                    activeImage === index && styles.thumbActive,
+                  ]}
                 />
               </TouchableOpacity>
             ))}
@@ -129,14 +173,19 @@ const ProductDetails = () => {
           <Text style={styles.title}>{product.title}</Text>
 
           <View style={styles.specStrip}>
-            <View style={[styles.specDot, { backgroundColor: statusDot[stockStatus] }]} />
+            <View
+              style={[
+                styles.specDot,
+                { backgroundColor: statusDot[stockStatus] },
+              ]}
+            />
             <Text style={styles.specText}>
               {sku} · STOCK {product.maxQuantity} ·{" "}
               {stockStatus === "inStock"
                 ? "IN STOCK"
                 : stockStatus === "lowStock"
-                ? "LOW STOCK"
-                : "OUT OF STOCK"}
+                  ? "LOW STOCK"
+                  : "OUT OF STOCK"}
             </Text>
           </View>
 
@@ -148,12 +197,7 @@ const ProductDetails = () => {
           <View style={styles.divider} />
 
           <Text style={styles.sectionTitle}>Reviews</Text>
-          <View style={styles.reviewsPlaceholder}>
-            <Ionicons name="star-outline" size={20} color={colors.inkMuted} />
-            <Text style={styles.reviewsPlaceholderText}>
-              No reviews yet. Be the first to review this product.
-            </Text>
-          </View>
+          <ReviewsSection productId={product.id} />
         </View>
       </ScrollView>
 
@@ -177,7 +221,10 @@ const ProductDetails = () => {
         </View>
 
         <TouchableOpacity
-          style={[styles.addToCartButton, quantity === 0 && styles.addToCartDisabled]}
+          style={[
+            styles.addToCartButton,
+            quantity === 0 && styles.addToCartDisabled,
+          ]}
           onPress={addToCart}
           disabled={quantity === 0}
         >
@@ -217,9 +264,17 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
     padding: spacing.sm,
   },
-  outOfStockBadge: {
+  wishlistButton: {
     position: "absolute",
     top: spacing.xl,
+    right: spacing.lg,
+    backgroundColor: colors.white,
+    borderRadius: radii.pill,
+    padding: spacing.sm,
+  },
+  outOfStockBadge: {
+    position: "absolute",
+    top: spacing.xl + 44,
     right: spacing.lg,
     backgroundColor: colors.danger,
     paddingHorizontal: spacing.sm,

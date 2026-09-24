@@ -1,6 +1,12 @@
 -- Drop this file at:
 -- react-native-gadget-shop/supabase/migrations/20260101000000_add_roles_rbac.sql
 --
+-- FIXED VERSION: the previous version used
+--   alter table users alter column role_id set default (select id from roles ...)
+-- which is invalid Postgres (DEFAULT cannot contain a subquery) and made
+-- the whole script fail and roll back. This version instead assigns the
+-- default role inside the handle_new_user() trigger function.
+--
 -- Adds a real roles system instead of the single `type = 'ADMIN'` string
 -- check that existed before. Four roles are seeded:
 --   super_admin  - full access, can manage admin accounts
@@ -17,6 +23,13 @@ create table if not exists "public"."roles" (
     "name" text not null unique,
     "description" text
 );
+
+alter table "public"."roles" enable row level security;
+
+drop policy if exists "Roles are readable by authenticated users" on "public"."roles";
+create policy "Roles are readable by authenticated users"
+on "public"."roles" for select to authenticated
+using (true);
 
 insert into "public"."roles" (name, description) values
     ('super_admin', 'Full access, including managing admin accounts'),
@@ -36,10 +49,6 @@ where u.type = 'ADMIN' and u.role_id is null;
 update "public"."users" u
 set role_id = (select id from "public"."roles" where name = 'customer')
 where u.role_id is null;
-
-alter table "public"."users" alter column "role_id" set default (
-    select id from "public"."roles" where name = 'customer'
-);
 
 -- Helper used inside RLS policies: returns the caller's role name, or
 -- 'customer' if somehow unset. SECURITY DEFINER so it can read the users
@@ -88,6 +97,28 @@ create trigger "sync_legacy_type"
     before insert or update of role_id on "public"."users"
     for each row execute procedure "public"."sync_legacy_type_from_role"();
 
+-- Update the existing new-user trigger function so it now also assigns
+-- the default 'customer' role at signup time (this replaces the invalid
+-- column-default approach).
+create or replace function "public"."handle_new_user"() returns "trigger"
+    language "plpgsql" security definer
+    as $$
+declare
+  customer_role_id bigint;
+begin
+  if new.raw_user_meta_data->>'avatar_url' is null or new.raw_user_meta_data->>'avatar_url' = '' then
+    new.raw_user_meta_data = jsonb_set(new.raw_user_meta_data, '{avatar_url}', '"https://w7.pngwing.com/pngs/205/731/png-transparent-default-avatar.png"' :: jsonb);
+  end if;
+
+  select id into customer_role_id from public.roles where name = 'customer';
+
+  insert into public.users (id, email, avatar_url, role_id)
+  values(new.id, new.email, new.raw_user_meta_data->>'avatar_url', customer_role_id);
+
+  return new;
+end;
+$$;
+
 -- Replace the old ADMIN-only write policies with role-aware ones.
 drop policy if exists "Enable insert for authenticated users only" on "public"."category";
 drop policy if exists "Enable Update for Admins only" on "public"."category";
@@ -125,7 +156,7 @@ using (public.current_user_role() in ('super_admin', 'admin'));
 
 -- Only super_admin can change another user's role.
 -- IMPORTANT: an earlier migration (20250710201819_update-users-rls.sql)
--- created "Enable update for auth users" with `using (true)` — that must
+-- created "Enable update for auth users" with `using (true)` -- that must
 -- be dropped, otherwise it stays active alongside this one and RLS
 -- policies are OR'd together, so the old permissive rule would silently
 -- let anyone update anyone's role_id regardless of this policy.
