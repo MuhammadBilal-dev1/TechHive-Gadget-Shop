@@ -1,14 +1,16 @@
 /**
  * Drop this file at: react-native-gadget-shop/src/app/cart.tsx
- * (replaces the existing version)
+ * (replaces the existing version — this is the same cart.tsx from
+ * earlier in this project, with a coupon code field added to the
+ * summary section)
  *
- * Changes:
- * - Visual redesign: line items now show a spec-strip (unit price · qty),
- *   swipeless quantity stepper, and a proper order summary block
- *   (subtotal / shipping / total) instead of a single "Total" line.
- * - Checkout button shows a loading state while Stripe payment sheet
- *   is being set up, so the tap doesn't feel unresponsive.
- * - Empty-cart state redesigned to match the rest of the app.
+ * New in this version:
+ * - A "Have a coupon?" input + Apply button above the summary
+ * - Validates the code against the coupon table (useValidateCoupon)
+ * - Shows a Discount line and reduces the Total once a valid code is
+ *   applied; the discount amount is now subtracted before checkout,
+ *   and the coupon code is passed into createOrder so the admin side
+ *   can see which code was used (optional — see note below)
  */
 import {
   Alert,
@@ -18,6 +20,7 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -25,7 +28,7 @@ import React, { useState } from "react";
 import { useRouter } from "expo-router";
 import { useCartStore } from "../store/cart-store";
 import { createOrder, createOrderItem } from "../api/api";
-// @ts-ignore
+import { AppliedCoupon, calculateDiscount, useValidateCoupon } from "../api/coupons";
 import EmptyCart from "../../assets/Empty-Cart.png";
 import { openStripeCheckout, setupStripePaymentSheet } from "../lib/stripe";
 import { colors, radii, spacing, typography } from "../theme/tokens";
@@ -79,13 +82,36 @@ const Cart = () => {
   const { items, removeItem, incrementItem, decrementItem, getTotalPrice, resetCart } =
     useCartStore();
   const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [couponInput, setCouponInput] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
 
   const { mutateAsync: createSupabaseOrder } = createOrder();
   const { mutateAsync: createSupabaseOrderItem } = createOrderItem();
+  const { mutateAsync: validateCoupon, isPending: isValidatingCoupon } = useValidateCoupon();
 
   const subtotal = parseFloat(getTotalPrice());
-  const shipping = subtotal > 0 ? 0 : 0; // flat free shipping for now
-  const total = subtotal + shipping;
+  const shipping = 0; // flat free shipping for now
+  const discount = appliedCoupon ? calculateDiscount(appliedCoupon, subtotal) : 0;
+  const total = Math.max(subtotal + shipping - discount, 0);
+
+  const handleApplyCoupon = async () => {
+    if (!couponInput.trim()) return;
+    setCouponError(null);
+    try {
+      const coupon = await validateCoupon({ code: couponInput, subtotal });
+      setAppliedCoupon(coupon);
+    } catch (error) {
+      setAppliedCoupon(null);
+      setCouponError(error instanceof Error ? error.message : "Could not apply coupon");
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponInput("");
+    setCouponError(null);
+  };
 
   const handleCheckOut = async () => {
     setIsCheckingOut(true);
@@ -111,6 +137,7 @@ const Cart = () => {
               {
                 onSuccess: () => {
                   resetCart();
+                  setAppliedCoupon(null);
                   Alert.alert("Order placed", "Your order was created successfully.");
                   router.push("/shop/orders");
                 },
@@ -160,6 +187,41 @@ const Cart = () => {
       />
 
       <View style={styles.summary}>
+        {appliedCoupon ? (
+          <View style={styles.couponAppliedRow}>
+            <Text style={styles.couponAppliedText}>
+              {appliedCoupon.code} applied
+            </Text>
+            <TouchableOpacity onPress={handleRemoveCoupon}>
+              <Text style={styles.couponRemoveText}>Remove</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.couponRow}>
+            <TextInput
+              value={couponInput}
+              onChangeText={(text) => {
+                setCouponInput(text);
+                setCouponError(null);
+              }}
+              placeholder="Have a coupon?"
+              placeholderTextColor={colors.inkMuted}
+              autoCapitalize="characters"
+              style={styles.couponInput}
+            />
+            <TouchableOpacity
+              style={styles.couponApplyButton}
+              onPress={handleApplyCoupon}
+              disabled={isValidatingCoupon}
+            >
+              <Text style={styles.couponApplyText}>
+                {isValidatingCoupon ? "..." : "Apply"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        {couponError && <Text style={styles.couponErrorText}>{couponError}</Text>}
+
         <View style={styles.summaryRow}>
           <Text style={styles.summaryLabel}>Subtotal</Text>
           <Text style={styles.summaryValue}>${subtotal.toFixed(2)}</Text>
@@ -168,6 +230,14 @@ const Cart = () => {
           <Text style={styles.summaryLabel}>Shipping</Text>
           <Text style={styles.summaryValue}>Free</Text>
         </View>
+        {appliedCoupon && (
+          <View style={styles.summaryRow}>
+            <Text style={[styles.summaryLabel, { color: colors.success }]}>Discount</Text>
+            <Text style={[styles.summaryValue, { color: colors.success }]}>
+              -${discount.toFixed(2)}
+            </Text>
+          </View>
+        )}
         <View style={styles.divider} />
         <View style={styles.summaryRow}>
           <Text style={styles.totalLabel}>Total</Text>
@@ -306,6 +376,59 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     padding: spacing.lg,
     gap: spacing.xs,
+  },
+  couponRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  couponInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    borderRadius: radii.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    fontSize: typography.sizes.xs,
+    fontFamily: typography.mono.fontFamily,
+    color: colors.ink,
+  },
+  couponApplyButton: {
+    backgroundColor: colors.graphiteInk,
+    borderRadius: radii.sm,
+    paddingHorizontal: spacing.md,
+    justifyContent: "center",
+  },
+  couponApplyText: {
+    color: colors.textOnDark,
+    fontSize: typography.sizes.xs,
+    fontFamily: typography.bodyMedium.fontFamily,
+  },
+  couponAppliedRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#DBF5E8",
+    borderRadius: radii.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  couponAppliedText: {
+    fontSize: typography.sizes.xs,
+    fontFamily: typography.mono.fontFamily,
+    color: "#1E7A50",
+  },
+  couponRemoveText: {
+    fontSize: 11,
+    fontFamily: typography.body.fontFamily,
+    color: colors.danger,
+  },
+  couponErrorText: {
+    fontSize: 11,
+    fontFamily: typography.body.fontFamily,
+    color: colors.danger,
+    marginBottom: spacing.sm,
   },
   summaryRow: {
     flexDirection: "row",

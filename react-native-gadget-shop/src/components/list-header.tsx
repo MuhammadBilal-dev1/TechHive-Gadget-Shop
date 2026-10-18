@@ -18,25 +18,25 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
-import React, { useState } from 'react';
-import { Link } from 'expo-router';
-import { FontAwesome, Ionicons } from '@expo/vector-icons';
+} from "react-native";
+import React, { useState } from "react";
+import { Link } from "expo-router";
+import { FontAwesome, Ionicons } from "@expo/vector-icons";
 // @ts-ignore
-import heroImg from '../../assets/images/hero.png';
-import { useCartStore } from '../store/cart-store';
-import { supabase } from '../lib/supabase';
-import { Tables } from '../types/database.types';
-import { colors, radii, spacing, typography } from '../theme/tokens';
+import heroImg from "../../assets/images/hero.png";
+import { useCartStore } from "../store/cart-store";
+import { supabase } from "../lib/supabase";
+import { Tables } from "../types/database.types";
+import { colors, radii, spacing, typography } from "../theme/tokens";
 
 type Props = {
-  categories: Tables<'category'>[];
+  categories: Tables<"category">[];
   onSearchChange?: (query: string) => void;
 };
 
 const ListHeader = ({ categories, onSearchChange }: Props) => {
   const { getItemCount } = useCartStore();
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -50,19 +50,26 @@ const ListHeader = ({ categories, onSearchChange }: Props) => {
   return (
     <View style={styles.container}>
       <View style={styles.topRow}>
-        <View style={styles.identity}>
-          <Image
-            source={{
-              uri: 'https://tse2.mm.bing.net/th/id/OIP.Zvs5IHgOO5kip7A32UwZJgHaHa?pid=Api&P=0&h=220',
-            }}
-            style={styles.avatar}
-          />
-          <Text style={styles.greeting}>Hello codewithlari</Text>
-        </View>
+        <Link href="/shop/profile" asChild>
+          <Pressable style={styles.identity}>
+            <Image
+              source={{
+                uri: "https://tse2.mm.bing.net/th/id/OIP.Zvs5IHgOO5kip7A32UwZJgHaHa?pid=Api&P=0&h=220",
+              }}
+              style={styles.avatar}
+            />
+            <Text style={styles.greeting}>Hello codewithlari</Text>
+          </Pressable>
+        </Link>
 
         <View style={styles.actions}>
           <Link href="/cart" asChild>
-            <Pressable style={({ pressed }) => [styles.iconButton, pressed && styles.iconButtonPressed]}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.iconButton,
+                pressed && styles.iconButtonPressed,
+              ]}
+            >
               <FontAwesome name="shopping-cart" size={20} color={colors.ink} />
               {getItemCount() > 0 && (
                 <View style={styles.cartBadge}>
@@ -105,8 +112,16 @@ const ListHeader = ({ categories, onSearchChange }: Props) => {
           data={categories}
           renderItem={({ item }) => (
             <Link asChild href={`categories/${item.slug}`}>
-              <Pressable style={({ pressed }) => [styles.category, pressed && styles.categoryPressed]}>
-                <Image source={{ uri: item.imageUrl }} style={styles.categoryImage} />
+              <Pressable
+                style={({ pressed }) => [
+                  styles.category,
+                  pressed && styles.categoryPressed,
+                ]}
+              >
+                <Image
+                  source={{ uri: item.imageUrl }}
+                  style={styles.categoryImage}
+                />
                 <Text style={styles.categoryText} numberOfLines={1}>
                   {item.name}
                 </Text>
@@ -132,13 +147,13 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
   },
   topRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   identity: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.sm,
   },
   avatar: {
@@ -152,8 +167,8 @@ const styles = StyleSheet.create({
     color: colors.ink,
   },
   actions: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.xs,
   },
   iconButton: {
@@ -163,7 +178,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   cartBadge: {
-    position: 'absolute',
+    position: "absolute",
     top: 2,
     right: 2,
     backgroundColor: colors.signalAmber,
@@ -171,18 +186,18 @@ const styles = StyleSheet.create({
     minWidth: 18,
     height: 18,
     paddingHorizontal: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   cartBadgeText: {
     color: colors.ink,
     fontSize: 10,
     fontFamily: typography.mono.fontFamily,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.sm,
     backgroundColor: colors.white,
     borderWidth: 1,
@@ -199,7 +214,7 @@ const styles = StyleSheet.create({
   },
   hero: {
     borderRadius: radii.lg,
-    overflow: 'hidden',
+    overflow: "hidden",
     height: 190,
     backgroundColor: colors.graphiteInk,
   },
@@ -207,12 +222,12 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     width: undefined,
     height: undefined,
-    resizeMode: 'cover',
+    resizeMode: "cover",
     opacity: 0.55,
   },
   heroOverlay: {
     flex: 1,
-    justifyContent: 'flex-end',
+    justifyContent: "flex-end",
     padding: spacing.lg,
     gap: 4,
   },
@@ -226,11 +241,11 @@ const styles = StyleSheet.create({
     color: colors.textOnDark,
     fontFamily: typography.display.fontFamily,
     fontSize: typography.sizes.xl,
-    maxWidth: '80%',
+    maxWidth: "80%",
   },
   heroButton: {
     marginTop: spacing.sm,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     backgroundColor: colors.signalAmber,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.lg,
@@ -251,7 +266,7 @@ const styles = StyleSheet.create({
   },
   category: {
     width: 84,
-    alignItems: 'center',
+    alignItems: "center",
     gap: spacing.xs,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.xs,
@@ -272,6 +287,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: typography.body.fontFamily,
     color: colors.ink,
-    textAlign: 'center',
+    textAlign: "center",
   },
 });

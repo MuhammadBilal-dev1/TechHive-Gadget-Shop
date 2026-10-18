@@ -37,6 +37,7 @@ const NAV_LINKS = [
   { href: "/admin/orders", label: "Orders" },
   { href: "/admin/products", label: "Products" },
   { href: "/admin/categories", label: "Categories" },
+  { href: "/admin/coupons", label: "Coupons" },
 ];
 
 export const Header = ({ role }: { role?: string }) => {
@@ -73,7 +74,7 @@ export const Header = ({ role }: { role?: string }) => {
             className={cn(
               "relative pb-1 text-sidebar-foreground/70 transition-colors hover:text-sidebar-foreground",
               pathname === href &&
-                "font-semibold text-sidebar-foreground after:absolute after:-bottom-[1px] after:left-0 after:h-[2px] after:w-full after:bg-primary after:content-['']"
+                "font-semibold text-sidebar-foreground after:absolute after:-bottom-[1px] after:left-0 after:h-[2px] after:w-full after:bg-primary after:content-['']",
             )}
           >
             {label}
@@ -94,7 +95,10 @@ export const Header = ({ role }: { role?: string }) => {
         </SheetTrigger>
         <SheetContent side="left">
           <nav className="grid gap-6 text-lg font-medium">
-            <Link href="/" className="flex items-center gap-2 text-lg font-semibold">
+            <Link
+              href="/"
+              className="flex items-center gap-2 text-lg font-semibold"
+            >
               <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary font-mono text-xs font-bold text-primary-foreground">
                 TH
               </span>
@@ -151,9 +155,15 @@ export const Header = ({ role }: { role?: string }) => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setTheme("light")}>Light</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setTheme("dark")}>Dark</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setTheme("system")}>System</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setTheme("light")}>
+                    Light
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setTheme("dark")}>
+                    Dark
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setTheme("system")}>
+                    System
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </DropdownMenuItem>

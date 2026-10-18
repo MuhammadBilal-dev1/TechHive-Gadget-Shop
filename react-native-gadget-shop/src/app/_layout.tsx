@@ -6,9 +6,44 @@ import QueryProvider from "../providers/query-provider";
 import { StripeProvider } from "@stripe/stripe-react-native";
 import { STRIPE_PUBLISHABLE_KEY } from "@env";
 import NotificationProvider from "../providers/notification-provider";
+import { useFonts } from "expo-font";
+import {
+  SpaceGrotesk_700Bold,
+} from "@expo-google-fonts/space-grotesk";
+import {
+  Inter_400Regular,
+  Inter_500Medium,
+} from "@expo-google-fonts/inter";
+import {
+  JetBrainsMono_400Regular,
+} from "@expo-google-fonts/jetbrains-mono";
+import * as SplashScreen from "expo-splash-screen";
+import { useEffect } from "react";
+import { ActivityIndicator, View } from "react-native";
+
+SplashScreen.preventAutoHideAsync();
+
+export function useAppFonts() {
+  const [fontsLoaded, fontError] = useFonts({
+    "SpaceGrotesk-Bold": SpaceGrotesk_700Bold,
+    "Inter-Regular": Inter_400Regular,
+    "Inter-Medium": Inter_500Medium,
+    "JetBrainsMono-Regular": JetBrainsMono_400Regular,
+  });
+ 
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError]);
+ 
+  return fontsLoaded || !!fontError;
+}
 
 export default function RootLayout() {
   // console.log('stripe public key', STRIPE_PUBLISHABLE_KEY);
+
+  
 
   return (
     <ToastProvider>

@@ -27,6 +27,7 @@ import React from "react";
 import { useRouter } from "expo-router";
 import { ActivityIndicator } from "react-native";
 import { getMyOrders, MyOrder, OrderStatus } from "../../api/orders";
+import { OrderStatusTimeline } from "../../components/order-status-timeline";
 import { colors, radii, spacing, typography } from "../../theme/tokens";
 
 const STATUS_STYLE: Record<OrderStatus, { bg: string; fg: string; label: string }> = {
@@ -66,6 +67,10 @@ const OrderCard = ({ order }: { order: MyOrder }) => {
           <Image source={{ uri: item.product.heroImage }} style={styles.itemThumb} />
         )}
       />
+
+      <View style={styles.timelineWrap}>
+        <OrderStatusTimeline status={order.status} />
+      </View>
 
       <View style={styles.cardFooter}>
         <Text style={styles.itemCountText}>
@@ -221,6 +226,10 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: radii.sm,
     backgroundColor: colors.graphiteSurface,
+  },
+  timelineWrap: {
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xs,
   },
   cardFooter: {
     flexDirection: "row",
